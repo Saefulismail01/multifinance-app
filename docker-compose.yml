@@ -1,31 +1,58 @@
 version: '3.8'
 
 services:
-  mysql:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multifinance-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=multifinance_user
+      - DB_PASSWORD=passwordkuat123
+      - DB_NAME=xyz_multifinance
+      - DB_DRIVER=mysql
+      - API_PORT=8080
+    depends_on:
+      - db
+    networks:
+      - multifinance-network
+
+  db:
     image: mysql:8.0
     container_name: multifinance-db
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: xyz_multifinance
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-    ports:
-      - "3306:3306"
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=xyz_multifinance
+      - MYSQL_USER=multifinance_user
+      - MYSQL_PASSWORD=passwordkuat123
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./database:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 5s
-      retries: 10
+      - ./database/DDL.sql:/docker-entrypoint-initdb.d/01-ddl.sql
+      - ./database/DML.sql:/docker-entrypoint-initdb.d/02-dml.sql
+    ports:
+      - "3307:3306"
+    networks:
+      - multifinance-network
 
   adminer:
     image: adminer
     restart: always
     ports:
-      - 8080:8080
+      - 8081:8080
     depends_on:
-      - mysql
+      - db
+    networks:
+      - multifinance-network
+
+networks:
+  multifinance-network:
+    driver: bridge
 
 volumes:
   mysql_data:

@@ -31,11 +31,11 @@ func (c *Config) readConfig() error {
 
 	// Set default values
 	c.DBConfig = DBConfig{
-		Host:     getEnv("DB_HOST", "localhost"),
+		Host:     getEnv("DB_HOST", "db"),
 		Port:     getEnv("DB_PORT", "3306"),
-		User:     getEnv("DB_USER", "root"),
+		User:     getEnv("DB_USER", ""),
 		Password: getEnv("DB_PASSWORD", ""),
-		DBName:   getEnv("DB_NAME", "multifinance"),
+		DBName:   getEnv("DB_NAME", ""),
 		Driver:   getEnv("DB_DRIVER", "mysql"),
 	}
 
