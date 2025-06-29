@@ -153,3 +153,11 @@ API mengembalikan respons error standar dalam format berikut:
 # Arsitektur
 [Lihat Diagram Arsitektur Aplikasi](https://www.mermaidchart.com/app/projects/83ff1754-b639-4e98-822c-c8232b169ec0/diagrams/f3ef9241-a51f-41e9-ab7c-f24047968b8e/share/invite/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkb2N1bWVudElEIjoiZjNlZjkyNDEtYTUxZi00MWU5LWFiN2MtZjI0MDQ3OTY4YjhlIiwiYWNjZXNzIjoiVmlldyIsImlhdCI6MTc1MTIwMjI3MX0.CtSEpFYs3Pdrw-8WeUkbKHn-1nx8IU3hL4jo0sou7po)
 
+# Docker
+[Lihat Dockerfile](./Dockerfile)
+[Lihat docker-compose.yml](./docker-compose.yml)
+
+# Docker Hub
+[Lihat Docker Hub](https://hub.docker.com/r/saefulismail01/multifinance-app)
+
+
