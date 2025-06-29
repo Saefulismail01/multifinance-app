@@ -10,22 +10,18 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// LimitRepository implements the limit repository interface
 type LimitRepository struct {
 	db *sqlx.DB
 }
 
-// NewLimitRepository creates a new LimitRepository.
 func NewLimitRepository(db *sqlx.DB) *LimitRepository {
 	return &LimitRepository{db: db}
 }
 
-// GetLimit retrieves a customer's limit by NIK and tenor.
 func (r *LimitRepository) GetLimit(ctx context.Context, nik string, tenor int) (*model.CustomerLimit, error) {
 	var limit model.CustomerLimit
 	query := "SELECT * FROM customer_limits WHERE customer_nik = ? AND tenor = ?"
 	
-	// Log the query and parameters
 	log.Printf("Debug - Executing query: %s with nik=%s, tenor=%d", query, nik, tenor)
 	
 	err := r.db.GetContext(ctx, &limit, query, nik, tenor)
@@ -42,7 +38,6 @@ func (r *LimitRepository) GetLimit(ctx context.Context, nik string, tenor int) (
 	return &limit, nil
 }
 
-// UpdateLimit updates a customer's limit within a transaction.
 func (r *LimitRepository) UpdateLimit(ctx context.Context, tx DBTx, nik string, tenor int, amount int64) error {
 	query := `
 		UPDATE customer_limits 

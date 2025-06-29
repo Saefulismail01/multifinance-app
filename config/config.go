@@ -27,7 +27,6 @@ type Config struct {
 }
 
 func (c *Config) readConfig() error {
-	// Load .env file if it exists
 	_ = godotenv.Load()
 
 	// Set default values
@@ -44,14 +43,14 @@ func (c *Config) readConfig() error {
 		ApiPort: getEnv("API_PORT", "8080"),
 	}
 
-	// Validate required fields
+
 	if c.DBConfig.Host == "" || c.DBConfig.Port == "" || 
 	   c.DBConfig.User == "" || c.DBConfig.DBName == "" || 
 	   c.APIConfig.ApiPort == "" {
 		return fmt.Errorf("missing required configuration")
 	}
 
-	// Validate port is a valid number
+
 	if _, err := strconv.Atoi(c.DBConfig.Port); err != nil {
 		return fmt.Errorf("invalid DB port number: %v", err)
 	}
@@ -63,7 +62,6 @@ func (c *Config) readConfig() error {
 	return nil
 }
 
-// getEnv gets an environment variable or returns a default value
 func getEnv(key, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value

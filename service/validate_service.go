@@ -5,20 +5,16 @@ import (
 	"multifinance/delivery/dto"
 )
 
-// ValidateService defines the interface for validation services
 type ValidateService interface {
 	ValidateTransactionRequest(req *dto.CreateTransactionRequest) error
 }
 
-// ValidateServiceImpl implements ValidateService
 type ValidateServiceImpl struct{}
 
-// NewValidateService creates a new ValidateService
 func NewValidateService() ValidateService {
 	return &ValidateServiceImpl{}
 }
 
-// ValidateTransactionRequest validates the transaction request
 func (s *ValidateServiceImpl) ValidateTransactionRequest(req *dto.CreateTransactionRequest) error {
 	var validationErrs []dto.ValidationError
 
@@ -78,10 +74,7 @@ func (s *ValidateServiceImpl) ValidateTransactionRequest(req *dto.CreateTransact
 	return nil
 }
 
-// HandleError handles errors and returns appropriate HTTP status code and response
 func HandleError(err error) (int, interface{}) {
-	// For now, return a generic error response
-	// You can expand this to handle different error types as needed
 	return http.StatusInternalServerError, map[string]interface{}{
 		"error":   "Internal Server Error",
 		"message": err.Error(),

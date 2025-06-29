@@ -10,13 +10,11 @@ import (
 	"multifinance/usecase/transaction"
 )
 
-// TransactionHandler handles HTTP requests for transactions.
 type TransactionHandler struct {
 	transactionUsecase transaction.TransactionUsecase
 	validateService    service.ValidateService
 }
 
-// NewTransactionHandler creates a new TransactionHandler.
 func NewTransactionHandler(
 	transactionUsecase transaction.TransactionUsecase,
 	validateService service.ValidateService,
@@ -27,7 +25,6 @@ func NewTransactionHandler(
 	}
 }
 
-// RegisterRoutes registers all transaction routes
 func (h *TransactionHandler) RegisterRoutes(router *gin.RouterGroup) {
 	transactionGroup := router.Group("/transactions")
 	{
@@ -35,17 +32,14 @@ func (h *TransactionHandler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// CreateTransaction handles the creation of a new transaction
 func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 	var req dto.CreateTransactionRequest
 
-	// Bind the request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(http.StatusBadRequest, "Invalid request"))
 		return
 	}
 
-	// Validate the request
 	if err := h.validateService.ValidateTransactionRequest(&req); err != nil {
 		if vErr, ok := err.(interface{ GetErrors() []dto.ValidationError }); ok {
 			c.JSON(http.StatusUnprocessableEntity, dto.Response{
@@ -60,7 +54,6 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	// Call the usecase to create the transaction
 	tx, err := h.transactionUsecase.CreateTransaction(c.Request.Context(), &req)
 	if err != nil {
 		switch err {
