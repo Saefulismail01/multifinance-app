@@ -147,3 +147,9 @@ API mengembalikan respons error standar dalam format berikut:
 - `DB_NAME`: Nama database
 - `SERVER_PORT`: Port server (default: 8080)
 
+# ERD
+[Lihat Diagram ERD](https://dbdiagram.io/d/ERD-6861365af413ba3508615838)
+
+# Arsitektur
+[Lihat Diagram Arsitektur Aplikasi](https://www.mermaidchart.com/app/projects/83ff1754-b639-4e98-822c-c8232b169ec0/diagrams/f3ef9241-a51f-41e9-ab7c-f24047968b8e/share/invite/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkb2N1bWVudElEIjoiZjNlZjkyNDEtYTUxZi00MWU5LWFiN2MtZjI0MDQ3OTY4YjhlIiwiYWNjZXNzIjoiVmlldyIsImlhdCI6MTc1MTIwMjI3MX0.CtSEpFYs3Pdrw-8WeUkbKHn-1nx8IU3hL4jo0sou7po)
+
