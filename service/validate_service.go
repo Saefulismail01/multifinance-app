@@ -3,7 +3,6 @@ package service
 import (
 	"net/http"
 	"multifinance/delivery/dto"
-	"multifinance/errors"
 )
 
 // ValidateService defines the interface for validation services
@@ -21,40 +20,59 @@ func NewValidateService() ValidateService {
 
 // ValidateTransactionRequest validates the transaction request
 func (s *ValidateServiceImpl) ValidateTransactionRequest(req *dto.CreateTransactionRequest) error {
-	validationErrors := &errors.ValidationErrors{
-		Message: "Validation failed",
-	}
+	var validationErrs []dto.ValidationError
 
 	if req.CustomerNIK == "" {
-		validationErrors.Add("customer_nik", "is required")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "customer_nik",
+			Message: "customer_nik is required",
+		})
 	}
 
 	if req.OTR <= 0 {
-		validationErrors.Add("otr", "must be greater than 0")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "otr",
+			Message: "otr must be greater than 0",
+		})
 	}
 
 	if req.AdminFee < 0 {
-		validationErrors.Add("admin_fee", "cannot be negative")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "admin_fee",
+			Message: "admin_fee cannot be negative",
+		})
 	}
 
 	if req.Installment <= 0 {
-		validationErrors.Add("installment", "must be greater than 0")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "installment",
+			Message: "installment must be greater than 0",
+		})
 	}
 
 	if req.Interest < 0 {
-		validationErrors.Add("interest", "cannot be negative")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "interest",
+			Message: "interest cannot be negative",
+		})
 	}
 
 	if req.AssetName == "" {
-		validationErrors.Add("asset_name", "is required")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "asset_name",
+			Message: "asset_name is required",
+		})
 	}
 
 	if req.Tenor <= 0 {
-		validationErrors.Add("tenor", "must be greater than 0")
+		validationErrs = append(validationErrs, dto.ValidationError{
+			Field:   "tenor",
+			Message: "tenor must be greater than 0",
+		})
 	}
 
-	if validationErrors.HasErrors() {
-		return validationErrors
+	if len(validationErrs) > 0 {
+		return dto.NewValidationError(validationErrs)
 	}
 
 	return nil
@@ -62,13 +80,10 @@ func (s *ValidateServiceImpl) ValidateTransactionRequest(req *dto.CreateTransact
 
 // HandleError handles errors and returns appropriate HTTP status code and response
 func HandleError(err error) (int, interface{}) {
-	switch e := err.(type) {
-	case *errors.ValidationErrors:
-		return e.Code, e
-	case *errors.ErrorResponse:
-		return e.Code, e
-	default:
-		// For unhandled errors, return 500 Internal Server Error
-		return http.StatusInternalServerError, errors.ErrInternalServerError
+	// For now, return a generic error response
+	// You can expand this to handle different error types as needed
+	return http.StatusInternalServerError, map[string]interface{}{
+		"error":   "Internal Server Error",
+		"message": err.Error(),
 	}
 }

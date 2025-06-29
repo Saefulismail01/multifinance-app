@@ -40,10 +40,10 @@ func Run() {
 
 	// Initialize usecase
 	transactionUsecase := transaction.NewTransactionUsecase(
-		transactionRepo,
+		sqlxDB,
 		customerRepo,
 		limitRepo,
-		sqlxDB,
+		transactionRepo,
 	)
 
 	// Initialize Gin router

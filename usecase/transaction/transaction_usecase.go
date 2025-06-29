@@ -3,10 +3,20 @@ package transaction
 import (
 	"context"
 	"errors"
-	"sync"
+	"fmt"
+	"time"
 
+	"multifinance/delivery/dto"
 	"multifinance/model"
 	repo "multifinance/repository"
+
+	"github.com/jmoiron/sqlx"
+)
+
+// Error variables
+var (
+	ErrCustomerNotFound = errors.New("customer not found")
+	ErrLimitExceeded    = errors.New("transaction amount exceeds available limit")
 )
 
 // DBTx is an alias for repository.DBTx
@@ -34,84 +44,98 @@ type TransactionRepository interface {
 
 // TransactionUsecase defines the interface for transaction use cases
 type TransactionUsecase interface {
-	CreateTransaction(ctx context.Context, transaction *model.Transaction, tenor int) error
+	CreateTransaction(ctx context.Context, req *dto.CreateTransactionRequest) (*model.Transaction, error)
 }
 
 type transactionUsecase struct {
-	transactionRepo TransactionRepository
-	customerRepo    CustomerRepository
-	limitRepo       LimitRepository
-	db              DB
-	mu              sync.Mutex
+	db           *sqlx.DB
+	customerRepo CustomerRepository
+	limitRepo    LimitRepository
+	txRepo       TransactionRepository
 }
 
 // NewTransactionUsecase creates a new transaction usecase
-func NewTransactionUsecase(
-	transactionRepo TransactionRepository,
-	customerRepo CustomerRepository,
-	limitRepo LimitRepository,
-	db DB,
-) TransactionUsecase {
+func NewTransactionUsecase(db *sqlx.DB, customerRepo CustomerRepository, limitRepo LimitRepository, txRepo TransactionRepository) TransactionUsecase {
 	return &transactionUsecase{
-		transactionRepo: transactionRepo,
-		customerRepo:    customerRepo,
-		limitRepo:       limitRepo,
-		db:              db,
+		db:           db,
+		customerRepo: customerRepo,
+		limitRepo:    limitRepo,
+		txRepo:       txRepo,
 	}
 }
 
-// CreateTransaction handles the business logic for creating a transaction
-func (u *transactionUsecase) CreateTransaction(ctx context.Context, transaction *model.Transaction, tenor int) error {
-	u.mu.Lock()
-	defer u.mu.Unlock()
+// CreateTransaction creates a new transaction
+func (u *transactionUsecase) CreateTransaction(ctx context.Context, req *dto.CreateTransactionRequest) (*model.Transaction, error) {
+	// Start a database transaction
+	dbTx, err := u.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	// Defer rollback in case of error
+	defer func() {
+		if r := recover(); r != nil {
+			dbTx.Rollback()
+		}
+	}()
 
 	// Check if customer exists
-	customer, err := u.customerRepo.GetCustomer(ctx, transaction.CustomerNIK)
+	customer, err := u.customerRepo.GetCustomer(ctx, req.CustomerNIK)
 	if err != nil {
-		return err
+		dbTx.Rollback()
+		return nil, fmt.Errorf("failed to get customer: %w", err)
 	}
 	if customer == nil {
-		return errors.New("customer not found")
+		dbTx.Rollback()
+		return nil, ErrCustomerNotFound
 	}
 
-	// Get customer's limit for the requested tenor
-	limit, err := u.limitRepo.GetLimit(ctx, transaction.CustomerNIK, tenor)
+	// Get customer limit for the requested tenor
+	limit, err := u.limitRepo.GetLimit(ctx, req.CustomerNIK, req.Tenor)
 	if err != nil {
-		return err
-	}
-	if limit == nil {
-		return errors.New("limit not found for the requested tenor")
+		dbTx.Rollback()
+		return nil, fmt.Errorf("failed to get customer limit: %w", err)
 	}
 
-	// Calculate total amount including interest and admin fee
-	totalAmount := transaction.OTR + transaction.AdminFee
+	// Calculate total amount
+	totalAmount := req.OTR + req.AdminFee
 
-	if totalAmount > limit.LimitAmount {
-		return errors.New("transaction amount exceeds available limit")
+	// Check if limit is sufficient
+	if limit.LimitAmount < totalAmount {
+		dbTx.Rollback()
+		return nil, ErrLimitExceeded
 	}
 
-	// Start a database transaction
-	tx, err := u.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return err
+	// Create transaction record
+	transaction := &model.Transaction{
+		ContractNumber: fmt.Sprintf("CON-%d", time.Now().UnixNano()),
+		CustomerNIK:    req.CustomerNIK,
+		OTR:            req.OTR,
+		AdminFee:       req.AdminFee,
+		Installment:    req.Installment,
+		Interest:       req.Interest,
+		AssetName:      req.AssetName,
+		CreatedAt:      time.Now(),
 	}
-	defer tx.Rollback()
 
-	// Update the customer's limit
+	// Save transaction
+	if err := u.txRepo.CreateTransaction(ctx, dbTx, transaction); err != nil {
+		dbTx.Rollback()
+		return nil, fmt.Errorf("failed to create transaction: %w", err)
+	}
+
+	// Update customer limit
 	newLimitAmount := limit.LimitAmount - totalAmount
-	if err := u.limitRepo.UpdateLimit(ctx, tx, transaction.CustomerNIK, tenor, newLimitAmount); err != nil {
-		return err
+	if err := u.limitRepo.UpdateLimit(ctx, dbTx, req.CustomerNIK, req.Tenor, newLimitAmount); err != nil {
+		dbTx.Rollback()
+		return nil, fmt.Errorf("failed to update customer limit: %w", err)
 	}
 
-	// Create the transaction
-	if err := u.transactionRepo.CreateTransaction(ctx, tx, transaction); err != nil {
-		return err
+	// Commit transaction
+	if err := dbTx.Commit(); err != nil {
+		dbTx.Rollback()
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return transaction, nil
 }

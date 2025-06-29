@@ -2,55 +2,69 @@ package dto
 
 import (
 	"net/http"
-	"multifinance/errors"
 )
 
-type ErrorResponseDto struct {
-	Code    int         `json:"code"`
-	Status  string      `json:"status"`
-	Message string      `json:"message"`
-	Error   string      `json:"error,omitempty"`
-	Errors  interface{} `json:"errors,omitempty"`
+// ValidationError represents a single validation error
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
 }
 
-type SuccessResponseDto struct {
+type validationError struct {
+	Errors []ValidationError
+}
+
+// Response represents a standard response
+type Response struct {
 	Code    int         `json:"code"`
 	Status  string      `json:"status"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
+	Errors  interface{} `json:"errors,omitempty"`
 }
 
-// ErrorResponse creates a standard error response
-func ErrorResponse(statusCode int, message string, err error) ErrorResponseDto {
-	errMsg := ""
-	if err != nil {
-		errMsg = err.Error()
-	}
-
-	return ErrorResponseDto{
-		Code:    statusCode,
-		Status:  http.StatusText(statusCode),
+// NewErrorResponse creates a new error response
+func NewErrorResponse(code int, message string) *Response {
+	return &Response{
+		Code:    code,
+		Status:  http.StatusText(code),
 		Message: message,
-		Error:   errMsg,
 	}
 }
 
-// ValidationErrorResponse creates a validation error response
-func ValidationErrorResponse(validationErr *errors.ValidationErrors) ErrorResponseDto {
-	return ErrorResponseDto{
-		Code:    validationErr.Code,
-		Status:  http.StatusText(validationErr.Code),
-		Message: validationErr.Message,
-		Errors:  validationErr.Errors,
+// NewSuccessResponse creates a new success response
+func NewSuccessResponse(data interface{}) *Response {
+	return &Response{
+		Code:    http.StatusOK,
+		Status:  http.StatusText(http.StatusOK),
+		Message: "Success",
+		Data:    data,
 	}
+}
+
+// NewValidationError creates a new validation error
+func NewValidationError(errs []ValidationError) error {
+	return &validationError{
+		Errors: errs,
+	}
+}
+
+// Error implements the error interface
+func (v *validationError) Error() string {
+	return "validation failed"
+}
+
+// GetErrors returns the list of validation errors
+func (v *validationError) GetErrors() []ValidationError {
+	return v.Errors
 }
 
 // SuccessResponse creates a standard success response
-func SuccessResponse(statusCode int, message string, data interface{}) SuccessResponseDto {
-	return SuccessResponseDto{
-		Code:    statusCode,
-		Status:  http.StatusText(statusCode),
-		Message: message,
+func SuccessResponse(data interface{}) *Response {
+	return &Response{
+		Code:    http.StatusOK,
+		Status:  http.StatusText(http.StatusOK),
+		Message: "Success",
 		Data:    data,
 	}
 }
