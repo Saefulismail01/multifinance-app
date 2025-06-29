@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log"
 
 	"multifinance/model"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -21,11 +23,23 @@ func NewLimitRepository(db *sqlx.DB) *LimitRepository {
 // GetLimit retrieves a customer's limit by NIK and tenor.
 func (r *LimitRepository) GetLimit(ctx context.Context, nik string, tenor int) (*model.CustomerLimit, error) {
 	var limit model.CustomerLimit
-	err := r.db.GetContext(ctx, &limit, "SELECT * FROM customer_limits WHERE customer_nik = ? AND tenor = ?", nik, tenor)
-	if err == sql.ErrNoRows {
-		return nil, nil
+	query := "SELECT * FROM customer_limits WHERE customer_nik = ? AND tenor = ?"
+	
+	// Log the query and parameters
+	log.Printf("Debug - Executing query: %s with nik=%s, tenor=%d", query, nik, tenor)
+	
+	err := r.db.GetContext(ctx, &limit, query, nik, tenor)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("Debug - No limit found for nik=%s, tenor=%d", nik, tenor)
+			return nil, nil
+		}
+			log.Printf("Error - Failed to get limit: %v", err)
+		return nil, err
 	}
-	return &limit, err
+	
+	log.Printf("Debug - Found limit: %+v", limit)
+	return &limit, nil
 }
 
 // UpdateLimit updates a customer's limit within a transaction.

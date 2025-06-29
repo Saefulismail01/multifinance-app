@@ -85,6 +85,7 @@ func (u *transactionUsecase) CreateTransaction(ctx context.Context, transaction 
 
 	// Calculate total amount including interest and admin fee
 	totalAmount := transaction.OTR + transaction.AdminFee
+
 	if totalAmount > limit.LimitAmount {
 		return errors.New("transaction amount exceeds available limit")
 	}

@@ -8,6 +8,7 @@ import (
 	"multifinance/config"
 	"multifinance/delivery/controller"
 	"multifinance/repository"
+	"multifinance/service"
 	"multifinance/usecase/transaction"
 
 	"github.com/gin-contrib/cors"
@@ -33,6 +34,9 @@ func Run() {
 	customerRepo := repository.NewCustomerRepository(sqlxDB)
 	limitRepo := repository.NewLimitRepository(sqlxDB)
 	transactionRepo := repository.NewTransactionRepository(sqlxDB)
+
+	// Initialize services
+	validateService := service.NewValidateService()
 
 	// Initialize usecase
 	transactionUsecase := transaction.NewTransactionUsecase(
@@ -66,7 +70,10 @@ func Run() {
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		transactionHandler := controller.NewTransactionHandler(transactionUsecase)
+		transactionHandler := controller.NewTransactionHandler(
+			transactionUsecase,
+			validateService,
+		)
 		transactionHandler.RegisterRoutes(v1)
 	}
 

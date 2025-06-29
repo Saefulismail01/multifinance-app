@@ -8,26 +8,27 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"multifinance/delivery/dto"
+	"multifinance/errors"
 	"multifinance/model"
+	"multifinance/service"
 	"multifinance/usecase/transaction"
 )
-
-// Response is a standard API response structure
-type Response struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
 
 // TransactionHandler handles HTTP requests for transactions.
 type TransactionHandler struct {
 	transactionUsecase transaction.TransactionUsecase
+	validateService    service.ValidateService
 }
 
 // NewTransactionHandler creates a new TransactionHandler.
-func NewTransactionHandler(transactionUsecase transaction.TransactionUsecase) *TransactionHandler {
-	return &TransactionHandler{transactionUsecase: transactionUsecase}
+func NewTransactionHandler(
+	transactionUsecase transaction.TransactionUsecase,
+	validateService service.ValidateService,
+) *TransactionHandler {
+	return &TransactionHandler{
+		transactionUsecase: transactionUsecase,
+		validateService:    validateService,
+	}
 }
 
 // RegisterRoutes registers all transaction routes
@@ -41,23 +42,22 @@ func (h *TransactionHandler) RegisterRoutes(router *gin.RouterGroup) {
 func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 	var req dto.CreateTransactionRequest
 
-	// Bind and validate the request
+	// Bind the request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "Invalid request body",
-			Error:   err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse(http.StatusBadRequest, "Invalid request body", err))
 		return
 	}
 
-	// Additional validation
-	if err := req.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "Validation failed",
-			Error:   err.Error(),
-		})
+	// Validate the request using the validation service
+	if err := h.validateService.ValidateTransactionRequest(&req); err != nil {
+		switch v := err.(type) {
+		case *errors.ValidationErrors:
+			c.JSON(v.Code, dto.ValidationErrorResponse(v))
+		case *errors.ErrorResponse:
+			c.JSON(v.Code, dto.ErrorResponse(v.Code, v.Message, v))
+		default:
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse(http.StatusInternalServerError, "Validation error", err))
+		}
 		return
 	}
 
@@ -75,11 +75,14 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 
 	// Call the usecase to create the transaction
 	if err := h.transactionUsecase.CreateTransaction(c.Request.Context(), transaction, req.Tenor); err != nil {
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "Failed to create transaction",
-			Error:   err.Error(),
-		})
+		switch e := err.(type) {
+		case *errors.ErrorResponse:
+			c.JSON(e.Code, e)
+		case *errors.ValidationErrors:
+			c.JSON(e.Code, e)
+		default:
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse(http.StatusInternalServerError, "Failed to create transaction", err))
+		}
 		return
 	}
 
@@ -95,10 +98,6 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		Tenor:          req.Tenor,
 	}
 
-	// Send the response
-	c.JSON(http.StatusCreated, Response{
-		Status:  http.StatusCreated,
-		Message: "Transaction created successfully",
-		Data:    response,
-	})
+	// Send the success response
+	c.JSON(http.StatusCreated, dto.SuccessResponse(http.StatusCreated, "Transaction created successfully", response))
 }
